@@ -1,7 +1,4 @@
-# Ubuntu-v12-Azure-VM-Prep
-
-
-# Ubuntu v12 Preparation Scripts for Migration
+# Ubuntu-v12-Azure-VM-Prep Scripts for Migration
 
 ## Disclaimer
 

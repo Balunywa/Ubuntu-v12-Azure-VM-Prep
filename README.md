@@ -289,7 +289,7 @@ configure_network
 
 # 6. Install the Azure Linux Guest Agent
 
-Updates package sources, installs required packages, and installs the Azure Linux Guest Agent, which is necessary for managing VMs within Azure. Due to the employment of an obsolete operating system, manual downloading of the zip file followed by its transfer to the Ubuntu VM via SFTP is required. You can obtain the most recent version from the walinuxagent package : Ubuntu (launchpad.net). Adjust the agent's name and path as per your selection prior to executing the respective function
+Updates package sources, installs required packages, and installs the Azure Linux Guest Agent, which is necessary for managing VMs within Azure. Due to the employment of an obsolete operating system, manual downloading of the zip file followed by its transfer to the Ubuntu VM via SFTP is required. You can obtain the most recent version from the walinuxagent package : https://launchpad.net/ubuntu/+source/walinuxagent. Adjust the agent's name and path as per your selection prior to executing the respective function
 
 ```bash
 #!/bin/bash

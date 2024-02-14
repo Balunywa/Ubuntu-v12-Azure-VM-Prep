@@ -287,9 +287,9 @@ configure_network() {
 configure_network
 ```
 
-### 6. Install the Azure Linux Guest Agent
+# 6. Install the Azure Linux Guest Agent
 
-## Updates package sources, installs required packages, and installs the Azure Linux Guest Agent, which is necessary for managing VMs within Azure. Due to the employment of an obsolete operating system, manual downloading of the zip file followed by its transfer to the Ubuntu VM via SFTP is required. Adjust the agent's name and path as per your selection prior to executing the respective function
+Updates package sources, installs required packages, and installs the Azure Linux Guest Agent, which is necessary for managing VMs within Azure. Due to the employment of an obsolete operating system, manual downloading of the zip file followed by its transfer to the Ubuntu VM via SFTP is required. Adjust the agent's name and path as per your selection prior to executing the respective function
 
 ```bash
 #!/bin/bash
@@ -354,6 +354,6 @@ cd -
 
 ```
 
-## Conclusion
+# Conclusion
 
-## The scripts provided in this repository are designed to assist in the preparation of Ubuntu v12 VMs for migration to Azure. They address common configuration requirements and compatibility issues. However, given the potential risks associated with deploying these scripts without proper testing, it's imperative to use them judiciously, ensuring thorough validation in a controlled environment before any production use.
+The scripts provided in this repository are designed to assist in the preparation of Ubuntu v12 VMs for migration to Azure. They address common configuration requirements and compatibility issues. However, given the potential risks associated with deploying these scripts without proper testing, it's imperative to use them judiciously, ensuring thorough validation in a controlled environment before any production use.

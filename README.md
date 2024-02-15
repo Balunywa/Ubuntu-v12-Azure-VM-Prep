@@ -228,50 +228,37 @@ log_message() {
 }
 
 enable_azure_serial_console() {
-    grub_cfg="/mnt/azure_sms_root/boot/grub/grub.cfg"
-    backup_grub_cfg="${grub_cfg}.bak"
-
+    # Path to the default GRUB config
+    grub_default="/mnt/azure_sms_root/etc/default/grub"
+    
     # Ensure the script is run as root
     if [ "$(id -u)" -ne 0 ]; then
         log_message "This script must be run as root."
         exit 1
     fi
 
-    if [[ -f "$grub_cfg" ]]; then
-        # Back up the existing GRUB configuration file
-        cp "$grub_cfg" "$backup_grub_cfg" && \
-        log_message "Backed up the GRUB config to $backup_grub_cfg."
-
+    if [[ -f "$grub_default" ]]; then
         # Check if serial console settings already exist to avoid duplicates
-        if grep -q "console=ttyS0" "$grub_cfg"; then
-            log_message "Serial console settings already present in GRUB config."
+        if grep -q "console=ttyS0" "$grub_default"; then
+            log_message "Serial console settings already present in GRUB default config."
         else
-            # Add console parameters to GRUB_CMDLINE_LINUX for Azure Serial Console
-            log_message "Modifying $grub_cfg for Azure Serial Console support."
-            sed -i '/GRUB_CMDLINE_LINUX=/ s/"$/ console=ttyS0,115200n8 earlyprintk=ttyS0,115200 rootdelay=300"/' "$grub_cfg"
-        fi
-
-        # Mount /dev, /proc, and /sys into the chroot environment
-        mount --bind /dev /mnt/azure_sms_root/dev
-        mount --bind /proc /mnt/azure_sms_root/proc
-        mount --bind /sys /mnt/azure_sms_root/sys
-
-        # Update GRUB within the chroot environment
-        if chroot /mnt/azure_sms_root grub-mkconfig -o /boot/grub/grub.cfg; then
+            # Add console parameters to GRUB_CMDLINE_LINUX_DEFAULT for Azure Serial Console
+            log_message "Modifying $grub_default for Azure Serial Console support."
+            sed -i '/GRUB_CMDLINE_LINUX_DEFAULT=/ s/"$/ console=ttyS0,115200n8 earlyprintk=ttyS0,115200 rootdelay=300"/' "$grub_default"
+            
+            # Update GRUB
+            chroot /mnt/azure_sms_root update-grub
             log_message "Successfully updated GRUB configuration for Azure Serial Console support."
-        else
-            log_message "Failed to update GRUB. Check the log for details."
-            exit 1
         fi
-
     else
-        log_message "GRUB configuration file not found."
+        log_message "GRUB default configuration file not found."
         exit 1
     fi
 }
 
 # Execute the function
 enable_azure_serial_console
+
 
 ```
 

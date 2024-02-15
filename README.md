@@ -2,7 +2,11 @@
 
 ## Disclaimer
 
-**IMPORTANT:** This repository and its contents are intended solely for testing and educational purposes. It has been tested in 2 or 3 Ubuntu-v12 running on lab vSphere environments and is not recommended for production use. Upgrading to the latest operating systems is always advised for better security, features, and support. In scenarios where an upgrade is not feasible, these scripts may be considered as a workaround. However, users must proceed with caution, acknowledging that this approach is experimental and should be tested thoroughly before any attempt to use it in a critical environment. The scripts are specifically designed for preparing Ubuntu-v12 VMs for migration to Azure and involve configurations that may not be suitable for all users or environments.
+**IMPORTANT:** 
+
+This repository and its contents are intended solely for testing purposes. It has been tested in 2 or 3 Ubuntu-v12 running in lab vSphere environments and is not recommended for production use. 
+
+Upgrading to the latest operating systems is always advised for better security, features, and support. In scenarios where an upgrade is not feasible, these scripts may be considered as a workaround. However, users must proceed with caution, acknowledging that this approach is experimental and should be tested thoroughly before any attempt to use it in a critical environment. The scripts are specifically designed for preparing Ubuntu-v12 VMs for migration to Azure and involve configurations that may not be suitable for all users or environments.
 
 ### Serious Disclaimer
 

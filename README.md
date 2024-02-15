@@ -25,8 +25,6 @@ Before migrating your VMs to Azure, it's essential to adjust the VMs' configurat
 ```bash
 #!/bin/bash
 
-# Script to mount /dev/sda1 to a specified mount point with logging
-
 # Define log file location
 LOG_FILE="/var/log/mount_root_partition.log"
 
@@ -44,9 +42,19 @@ fi
 # Define the mount point
 MOUNT_POINT="/mnt/azure_sms_root"
 
-# Check if /dev/sda1 is already correctly mounted at the mount point
-if findmnt -rn -S /dev/sda1 -T "$MOUNT_POINT"; then
-    log_message "/dev/sda1 is already correctly mounted on $MOUNT_POINT."
+# Dynamically identify the root partition
+ROOT_PARTITION=$(findmnt -n -o SOURCE /)
+
+if [ -z "$ROOT_PARTITION" ]; then
+    log_message "Unable to identify the root partition."
+    exit 1
+fi
+
+log_message "Identified root partition: $ROOT_PARTITION"
+
+# Check if the root partition is already correctly mounted at the mount point
+if findmnt -rn -S "$ROOT_PARTITION" -T "$MOUNT_POINT"; then
+    log_message "$ROOT_PARTITION is already correctly mounted on $MOUNT_POINT."
     exit 0
 fi
 
@@ -58,23 +66,18 @@ else
     log_message "Mount point $MOUNT_POINT already exists."
 fi
 
-# Attempt to mount using UUID to ensure the correct partition is mounted
-UUID=$(blkid -o value -s UUID /dev/sda1)
-if [ -n "$UUID" ]; then
-    log_message "Attempting to mount root partition with UUID $UUID at $MOUNT_POINT."
-    mount UUID="$UUID" "$MOUNT_POINT" 2>&1 | tee -a "$LOG_FILE"
-    
-    # Verify the mount was successful
-    if findmnt -rn -S /dev/sda1 -T "$MOUNT_POINT"; then
-        log_message "Successfully mounted root partition to $MOUNT_POINT."
-    else
-        log_message "Failed to mount root partition. Please check logs and system status."
-        exit 1
-    fi
+# Attempt to mount the root partition
+log_message "Attempting to mount root partition ($ROOT_PARTITION) at $MOUNT_POINT."
+mount "$ROOT_PARTITION" "$MOUNT_POINT" 2>&1 | tee -a "$LOG_FILE"
+
+# Verify the mount was successful
+if findmnt -rn -S "$ROOT_PARTITION" -T "$MOUNT_POINT"; then
+    log_message "Successfully mounted root partition to $MOUNT_POINT."
 else
-    log_message "Unable to find UUID for /dev/sda1. Cannot proceed with mount."
+    log_message "Failed to mount root partition. Please check logs and system status."
     exit 1
 fi
+
 
 ```
 

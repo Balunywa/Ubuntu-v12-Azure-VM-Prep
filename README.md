@@ -214,9 +214,6 @@ Modifies the GRUB configuration to enable Azure Serial Console, allowing for tro
 
 ```bash
 #!/bin/bash
-# Define a log file location and function to enable Azure Serial Console
-# Function details and implementation omitted for brevity
-#seriall logging
 
 # Define a log file location
 LOG_FILE="/tmp/enable_azure_serial_console.log"
@@ -241,19 +238,28 @@ enable_azure_serial_console() {
         cp "$grub_cfg" "$backup_grub_cfg" && \
         log_message "Backed up the GRUB config to $backup_grub_cfg."
 
-        # Add console parameters to GRUB_CMDLINE_LINUX for Azure Serial Console
-        log_message "Modifying $grub_cfg for Azure Serial Console support."
-        
-        # Safely add serial console settings to GRUB_CMDLINE_LINUX, avoiding duplicate entries
-        sed -i '/GRUB_CMDLINE_LINUX=/ s/"$/ console=ttyS0,115200n8 earlyprintk=ttyS0,115200 rootdelay=300"/' "$grub_cfg"
+        # Check if serial console settings already exist to avoid duplicates
+        if grep -q "console=ttyS0" "$grub_cfg"; then
+            log_message "Serial console settings already present in GRUB config."
+        else
+            # Add console parameters to GRUB_CMDLINE_LINUX for Azure Serial Console
+            log_message "Modifying $grub_cfg for Azure Serial Console support."
+            sed -i '/GRUB_CMDLINE_LINUX=/ s/"$/ console=ttyS0,115200n8 earlyprintk=ttyS0,115200 rootdelay=300"/' "$grub_cfg"
+        fi
 
-        # Update GRUB
-        if chroot /mnt/azure_sms_root update-grub; then
+        # Mount /dev, /proc, and /sys into the chroot environment
+        mount --bind /dev /mnt/azure_sms_root/dev
+        mount --bind /proc /mnt/azure_sms_root/proc
+        mount --bind /sys /mnt/azure_sms_root/sys
+
+        # Update GRUB within the chroot environment
+        if chroot /mnt/azure_sms_root grub-mkconfig -o /boot/grub/grub.cfg; then
             log_message "Successfully updated GRUB configuration for Azure Serial Console support."
         else
             log_message "Failed to update GRUB. Check the log for details."
             exit 1
         fi
+
     else
         log_message "GRUB configuration file not found."
         exit 1
@@ -262,6 +268,7 @@ enable_azure_serial_console() {
 
 # Execute the function
 enable_azure_serial_console
+
 ```
 
 ### 5. Configure Network

@@ -155,10 +155,8 @@ Backs up and rebuilds the initial ramdisk image for the current kernel version t
 
 ```bash
 #!/bin/bash
-# Define a log file location and rebuild initrd function
-# Function details and implementation omitted for brevity
-#initrd rebuild function
-# Define a log file location
+
+# Define log file location
 LOG_FILE="/tmp/initrd_rebuild.log"
 
 # Function to log messages
@@ -173,26 +171,41 @@ rebuild_initrd() {
         exit 1
     fi
 
-    # Dynamically determine the kernel version
-    kernel_version=$(uname -r)
+    # Optionally accept a kernel version as an argument
+    kernel_version="${1:-$(uname -r)}"
     log_message "Kernel version identified as $kernel_version."
 
     # Ensure running in the correct directory
     cd /boot
 
+    # Check if the initrd image exists before attempting to back it up
+    if [ ! -f "initrd.img-${kernel_version}" ]; then
+        log_message "initrd image for kernel $kernel_version does not exist, cannot proceed."
+        exit 1
+    fi
+
     # Backup the existing initrd image
     log_message "Backing up the current initrd image for kernel $kernel_version..."
-    cp initrd.img-${kernel_version} initrd.img-${kernel_version}.bak 2>>"$LOG_FILE" && \
-    log_message "Backup created: initrd.img-${kernel_version}.bak"
+    if cp "initrd.img-${kernel_version}" "initrd.img-${kernel_version}.bak" 2>>"$LOG_FILE"; then
+        log_message "Backup created: initrd.img-${kernel_version}.bak"
+    else
+        log_message "Failed to create backup for initrd.img-${kernel_version}."
+        exit 1
+    fi
 
     # Rebuild the initrd image with necessary modules for Hyper-V compatibility
     log_message "Rebuilding initrd image for Hyper-V compatibility..."
-    update-initramfs -u -k ${kernel_version} 2>>"$LOG_FILE" && \
-    log_message "initrd image rebuilt successfully for kernel $kernel_version."
+    if update-initramfs -u -k "${kernel_version}" 2>>"$LOG_FILE"; then
+        log_message "initrd image rebuilt successfully for kernel $kernel_version."
+    else
+        log_message "Failed to rebuild initrd image for kernel $kernel_version."
+        exit 1
+    fi
 }
 
-# Call the function
-rebuild_initrd
+# Execute the function with an optional kernel version argument
+rebuild_initrd "$@"
+
 ```
 
 ### 4. Enable Azure Serial Console

@@ -138,8 +138,7 @@ mount_system_partitions() {
             # Mount the partition
             if mount --bind "$device" "$new_mount_point" 2>>"$LOG_FILE"; then
                 log_message "Successfully mounted $device to $new_mount_point."
-            else
-                log_message "Failed to mount $device on $new_mount_point."
+            # Removed the else block that logs the failure to mount
             fi
         done < "$fstab_file"
     else
@@ -150,6 +149,7 @@ mount_system_partitions() {
 
 # Execute the function
 mount_system_partitions
+
 
 ```
 

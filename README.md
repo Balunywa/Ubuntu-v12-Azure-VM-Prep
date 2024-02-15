@@ -24,11 +24,14 @@ Before migrating your VMs to Azure, it's essential to adjust the VMs' configurat
 
 ```bash
 #!/bin/bash
+
+# Script to mount /dev/sda1 to a specified mount point with logging
+
 # Define log file location
 LOG_FILE="/var/log/mount_root_partition.log"
 
 # Function to log messages
-log_message() {
+function log_message() {
     echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" | tee -a "$LOG_FILE"
 }
 
@@ -41,7 +44,13 @@ fi
 # Define the mount point
 MOUNT_POINT="/mnt/azure_sms_root"
 
-# Create the mount point if it doesn't exist
+# Check if /dev/sda1 is already correctly mounted at the mount point
+if findmnt -rn -S /dev/sda1 -T "$MOUNT_POINT"; then
+    log_message "/dev/sda1 is already correctly mounted on $MOUNT_POINT."
+    exit 0
+fi
+
+# If the mount point directory does not exist, create it
 if [ ! -d "$MOUNT_POINT" ]; then
     log_message "Creating mount point at $MOUNT_POINT."
     mkdir -p "$MOUNT_POINT"
@@ -49,22 +58,24 @@ else
     log_message "Mount point $MOUNT_POINT already exists."
 fi
 
-# Attempt to find the root partition by UUID and mount it
-ROOT_PARTITION_UUID=$(blkid -o value -s UUID /dev/sda1)
-if [ -n "$ROOT_PARTITION_UUID" ]; then
-    log_message "Attempting to mount root partition with UUID $ROOT_PARTITION_UUID at $MOUNT_POINT."
-    mount UUID="$ROOT_PARTITION_UUID" "$MOUNT_POINT" 2>&1 | tee -a "$LOG_FILE"
+# Attempt to mount using UUID to ensure the correct partition is mounted
+UUID=$(blkid -o value -s UUID /dev/sda1)
+if [ -n "$UUID" ]; then
+    log_message "Attempting to mount root partition with UUID $UUID at $MOUNT_POINT."
+    mount UUID="$UUID" "$MOUNT_POINT" 2>&1 | tee -a "$LOG_FILE"
     
-    if mountpoint -q "$MOUNT_POINT"; then
+    # Verify the mount was successful
+    if findmnt -rn -S /dev/sda1 -T "$MOUNT_POINT"; then
         log_message "Successfully mounted root partition to $MOUNT_POINT."
     else
-        log_message "Failed to mount root partition."
+        log_message "Failed to mount root partition. Please check logs and system status."
         exit 1
     fi
 else
-    log_message "Unable to find UUID for /dev/sda1."
+    log_message "Unable to find UUID for /dev/sda1. Cannot proceed with mount."
     exit 1
 fi
+
 ```
 
 ### 2. Mount File System Partition

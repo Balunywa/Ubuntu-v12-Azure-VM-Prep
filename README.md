@@ -277,9 +277,6 @@ enable_azure_serial_console
 
 ```bash
 #!/bin/bash
-# Define a log file location and network configuration function
-# Function details and implementation omitted for brevity
-#Configure Network
 
 # Define a log file location
 LOG_FILE="/tmp/configure_network.log"
@@ -296,34 +293,38 @@ configure_network() {
         exit 1
     fi
 
+    # Dynamically identify the primary network interface
+    primary_iface=$(ip route | grep default | sed -e "s/^.*dev.//" -e "s/.proto.*//")
+    log_message "Identified primary network interface: $primary_iface"
+
+    # Backup existing network configuration
+    datetime=$(date +"%Y%m%d-%H%M%S")
+    backup_dir="/etc/network/interfaces.d/backup-$datetime"
+    mkdir -p "$backup_dir"
+    cp /etc/network/interfaces.d/* "$backup_dir" 2>/dev/null || true
+    log_message "Backup of existing network configurations created in $backup_dir."
+
     # Disable udev's persistent network device naming rules
     log_message "Disabling udev persistent net rules."
     ln -s /dev/null /etc/udev/rules.d/75-persistent-net-generator.rules 2>>"$LOG_FILE"
     rm -f /etc/udev/rules.d/70-persistent-net.rules 2>>"$LOG_FILE"
 
-    # Check if the network interface configuration for eth0 exists
-    eth0_cfg="/etc/network/interfaces.d/eth0.cfg"
-    if [ ! -f "$eth0_cfg" ]; then
-        # If not, configure eth0 to use DHCP
-        log_message "Configuring eth0 to use DHCP."
-        mkdir -p /etc/network/interfaces.d
-        echo -e "auto eth0\niface eth0 inet dhcp" > "$eth0_cfg"
+    # Configure primary interface to use DHCP if not already configured
+    iface_cfg="/etc/network/interfaces.d/${primary_iface}.cfg"
+    if [ ! -f "$iface_cfg" ]; then
+        log_message "Configuring $primary_iface to use DHCP."
+        echo -e "auto $primary_iface\niface $primary_iface inet dhcp" > "$iface_cfg"
     else
-        log_message "eth0 configuration already exists. Skipping DHCP configuration."
+        log_message "$primary_iface configuration already exists. Skipping DHCP configuration."
     fi
 
-    # Additional network configuration changes can be added here
-
-    # Restart networking to apply changes (Use with caution; may disrupt SSH sessions)
-    # service networking restart || {
-    #    log_message "Failed to restart networking service."
-    #    exit 1
-    # }
-    log_message "Network configuration updated. Please restart the networking service manually."
+    # Note: Directly restarting networking services in a script can be risky, especially over SSH connections.
+    log_message "Network configuration updated. Please manually restart the networking service if required."
 }
 
 # Execute the function
 configure_network
+
 ```
 
 # 6. Install the Azure Linux Guest Agent

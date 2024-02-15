@@ -87,8 +87,7 @@ fi
 
 ```bash
 #!/bin/bash
-# Define a log file location and function to mount system partitions
-# Function details and implementation omitted for brevity
+
 # Define a log file location
 LOG_FILE="/tmp/mount_system_partitions.log"
 
@@ -107,29 +106,37 @@ mount_system_partitions() {
     fstab_file="/mnt/azure_sms_root/etc/fstab"
     if [[ -f "$fstab_file" ]]; then
         log_message "Processing /etc/fstab entries."
-        
+
         while IFS= read -r line || [[ -n "$line" ]]; do
             # Skip comments and empty lines
             [[ "$line" =~ ^#.*$ ]] || [[ -z "$line" ]] && continue
-            
+
             # Extract the device, mount point, and file system type
             read -r device mount_point fs_type <<< $(echo $line | awk '{print $1, $2, $3}')
-            
+
             # Skip swap entries
             [[ "$fs_type" == "swap" ]] && continue
-            
+
             # Determine the full path for the new mount point
             new_mount_point="/mnt/azure_sms_root${mount_point}"
-            
+
+            # Check if the partition is already mounted
+            if findmnt -rn "$new_mount_point" > /dev/null 2>&1; then
+                log_message "$device is already mounted on $new_mount_point."
+                continue # Skip to the next iteration without attempting to remount
+            fi
+
             # Create the mount point directory if it doesn't exist
-            mkdir -p "$new_mount_point" 2>>"$LOG_FILE" && log_message "Created mount point $new_mount_point."
-            
+            if [ ! -d "$new_mount_point" ]; then
+                mkdir -p "$new_mount_point" 2>>"$LOG_FILE" && log_message "Created mount point $new_mount_point."
+            fi
+
             # Mount the partition
-            log_message "Mounting $device to $new_mount_point"
-            mount --bind "$device" "$new_mount_point" 2>>"$LOG_FILE" && log_message "Successfully mounted $device to $new_mount_point." || {
-                log_message "Failed to mount $device on $new_mount_point"
-                continue
-            }
+            if mount --bind "$device" "$new_mount_point" 2>>"$LOG_FILE"; then
+                log_message "Successfully mounted $device to $new_mount_point."
+            else
+                log_message "Failed to mount $device on $new_mount_point."
+            fi
         done < "$fstab_file"
     else
         log_message "/etc/fstab not found in root partition."
@@ -139,6 +146,7 @@ mount_system_partitions() {
 
 # Execute the function
 mount_system_partitions
+
 ```
 
 ### 3. Rebuild initrd

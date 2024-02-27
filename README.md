@@ -219,45 +219,72 @@ Modifies the GRUB configuration to enable Azure Serial Console, allowing for tro
 ```bash
 #!/bin/bash
 
-# Define a log file location
-LOG_FILE="/tmp/enable_azure_serial_console.log"
+# Set the GRUB command line parameters for a cloud environment and ensure console output
+GRUB_CMDLINE_LINUX_DEFAULT="rootdelay=300 console=ttyS0 earlyprintk=ttyS0 net.ifnames=0"
+GRUB_CMDLINE_LINUX="console=ttyS0 earlyprintk=ttyS0"
 
-# Function to log messages
-log_message() {
-    echo "$(date +"%Y-%m-%d %H:%M:%S") - $1" | tee -a "$LOG_FILE"
-}
+# Path to the GRUB configuration
+GRUB_CONFIG="/etc/default/grub"
 
-enable_azure_serial_console() {
-    # Path to the default GRUB config
-    grub_default="/mnt/azure_sms_root/etc/default/grub"
-    
-    # Ensure the script is run as root
-    if [ "$(id -u)" -ne 0 ]; then
-        log_message "This script must be run as root."
-        exit 1
-    fi
+# Backup the original GRUB configuration file
+sudo cp "$GRUB_CONFIG" "${GRUB_CONFIG}.bak"
 
-    if [[ -f "$grub_default" ]]; then
-        # Check if serial console settings already exist to avoid duplicates
-        if grep -q "console=ttyS0" "$grub_default"; then
-            log_message "Serial console settings already present in GRUB default config."
-        else
-            # Add console parameters to GRUB_CMDLINE_LINUX_DEFAULT for Azure Serial Console
-            log_message "Modifying $grub_default for Azure Serial Console support."
-            sed -i '/GRUB_CMDLINE_LINUX_DEFAULT=/ s/"$/ console=ttyS0,115200n8 earlyprintk=ttyS0,115200 rootdelay=300"/' "$grub_default"
-            
-            # Update GRUB
-            chroot /mnt/azure_sms_root update-grub
-            log_message "Successfully updated GRUB configuration for Azure Serial Console support."
-        fi
-    else
-        log_message "GRUB default configuration file not found."
-        exit 1
-    fi
-}
+# Update GRUB configuration file with the default parameters
+sudo sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"$GRUB_CMDLINE_LINUX_DEFAULT\"/" "$GRUB_CONFIG"
 
-# Execute the function
-enable_azure_serial_console
+# Update GRUB configuration file to ensure console output
+sudo sed -i "s/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX=\"$GRUB_CMDLINE_LINUX\"/" "$GRUB_CONFIG"
+
+# Remove the quiet and splash options to enable verbose boot messages
+sudo sed -i '/GRUB_CMDLINE_LINUX_DEFAULT=/ s/" quiet splash"/""/' "$GRUB_CONFIG"
+
+# Update the GRUB configuration
+sudo update-grub
+
+# Add the Hyper-V modules to initramfs
+KERNEL_VERSION=$(uname -r)
+INITRAMFS_PATH="/boot/initramfs-$KERNEL_VERSION.img"
+BACKUP_INITRAMFS_PATH="/boot/initramfs-$KERNEL_VERSION.img.bak"
+
+# Backup the current initramfs image
+sudo cp "$INITRAMFS_PATH" "$BACKUP_INITRAMFS_PATH"
+
+# Add the required modules
+sudo dracut -f -v "$INITRAMFS_PATH" "$KERNEL_VERSION" --add-drivers "hv_vmbus hv_netvsc hv_storvsc"
+
+# Update GRUB once more to ensure changes take effect
+sudo update-grub
+
+# Setup Upstart job for ttyS0 to ensure getty starts at boot
+TTY_CONFIG="/etc/init/ttyS0.conf"
+
+# Check if ttyS0.conf already exists to avoid duplicate entries
+if [ ! -f "$TTY_CONFIG" ]; then
+    echo "Creating ttyS0 Upstart job..."
+
+    # Create the ttyS0 Upstart job
+    echo "start on stopped rc RUNLEVEL=[2345]
+stop on runlevel [!2345]
+
+respawn
+exec /sbin/getty -L 115200 ttyS0 vt102" | sudo tee "$TTY_CONFIG"
+
+    echo "ttyS0 Upstart job created."
+else
+    echo "ttyS0 Upstart job already exists."
+fi
+
+echo "GRUB and initramfs configuration completed successfully."
+
+# Restart the VM to apply changes
+echo "A reboot is required to apply the changes. Would you like to reboot now? (y/n)"
+read -r answer
+if [ "$answer" != "${answer#[Yy]}" ]; then
+    sudo reboot
+else
+    echo "Please remember to reboot the system manually to apply changes."
+fi
+
 
 
 ```
@@ -285,7 +312,8 @@ configure_network() {
     fi
 
     # Dynamically identify the primary network interface
-    primary_iface=$(ip route | grep default | sed -e "s/^.*dev.//" -e "s/.proto.*//")
+    #primary_iface=$(ip route | grep default | sed -e "s/^.*dev.//" -e "s/.proto.*//")
+    primary_iface=$(ip route | grep default | awk '{ print $5 }')
     log_message "Identified primary network interface: $primary_iface"
 
     # Backup existing network configuration
